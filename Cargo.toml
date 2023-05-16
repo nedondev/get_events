@@ -1,0 +1,24 @@
+[package]
+name = "gather_data"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+async-recursion = "1.0.4"
+clap = { version = "4.2.7", features = ["derive"] }
+env_logger = "0.10.0"
+ethers = "2.0.4"
+eyre = "0.6.8"
+foundry-common = { git = "https://github.com/foundry-rs/foundry", version = "0.1.0" }
+log = "0.4.17"
+thiserror = "1.0.40"
+tokio = { version = "1.28.1", features = ["macros"] }
+
+[profile.release]
+lto = "fat"
+debug = 0
+strip = true
+panic = "abort"
+codegen-units = 1
