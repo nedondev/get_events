@@ -67,12 +67,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         client_number,
         log,
     } = Args::parse();
-    
+
     let event_string = Arc::new(event_string);
     let target_address = Arc::new(target_address);
     if log {
         Builder::new().filter(None, LevelFilter::Info).init();
-    } else{
+    } else {
         Builder::new().filter(None, LevelFilter::Off).init();
     }
     let provider = Provider::<Http>::try_from(rpc_url.as_str())?;
@@ -92,20 +92,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     let mut handles = Vec::new();
     for i in 0..client_number {
-        let split_start_block = start_block + (to_block-start_block) * i/(client_number);
-        let split_stop_block = start_block + (to_block-start_block) * (i+1)/(client_number);
+        let split_start_block = start_block + (to_block - start_block) * i / (client_number);
+        let split_stop_block = start_block + (to_block - start_block) * (i + 1) / (client_number);
         let provider = Provider::<Http>::try_from(rpc_url.as_str())?;
         let client = Arc::new(provider);
-        let event_string =Arc::clone(&event_string);
-        let target_address =Arc::clone(&target_address);
+        let event_string = Arc::clone(&event_string);
+        let target_address = Arc::clone(&target_address);
         handles.push(tokio::spawn(async move {
-            // if not get block before use client to get log will got 
+            // if not get block before use client to get log will got
             // `failed to lookup address information: nodename nor servname provided, or not known` error message
-            match client.get_block_number().await{
-                Ok(val) =>{
+            match client.get_block_number().await {
+                Ok(val) => {
                     log::info!("client {i} Ok {val:?}");
                 }
-                Err(err) =>{
+                Err(err) => {
                     log::info!("client {i} Err {err:?}");
                 }
             }
@@ -119,11 +119,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             )
             .await;
             events
-            })
-        );
+        }));
     }
     let mut events = Vec::new();
-    for handle in handles{
+    for handle in handles {
         events.extend(handle.await.unwrap());
     }
     let event_strings = events::events_to_csv(

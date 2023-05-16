@@ -27,61 +27,59 @@ pub async fn events_to_csv(
     let mut handles = Vec::new();
     let events = Arc::new(events);
     let event_sig = Arc::new(event_sig);
-    for event_index in 0..events.len(){
+    for event_index in 0..events.len() {
         let is_block_number = Arc::new(is_block_number);
         let is_block_hash = Arc::new(is_block_hash);
         let is_tx_hash = Arc::new(is_tx_hash);
         let event_sig = Arc::clone(&event_sig);
         let events = Arc::clone(&events);
-        handles.push( tokio::spawn(async move { 
-        let mut token_strings: Vec<String> = Vec::new();
-        // Create place holder for event 4 bytes signature.
-        let mut event_string: String = "0x00000000".to_string();
-        let topics = &events[event_index].topics[1..];
-        topics.iter().for_each(|topic| {
-            let topic = format!("{topic:#x}");
-            let topic = topic.split('x').collect::<Vec<&str>>()[1];
-            event_string += topic;
-        });
-        let data = events[event_index].data.to_string();
-        let data = data.split('x').collect::<Vec<&str>>()[1];
-        event_string += data;
-        let tokens = abi::abi_decode(&event_sig, &event_string, true).unwrap();
+        handles.push(tokio::spawn(async move {
+            let mut token_strings: Vec<String> = Vec::new();
+            // Create place holder for event 4 bytes signature.
+            let mut event_string: String = "0x00000000".to_string();
+            let topics = &events[event_index].topics[1..];
+            topics.iter().for_each(|topic| {
+                let topic = format!("{topic:#x}");
+                let topic = topic.split('x').collect::<Vec<&str>>()[1];
+                event_string += topic;
+            });
+            let data = events[event_index].data.to_string();
+            let data = data.split('x').collect::<Vec<&str>>()[1];
+            event_string += data;
+            let tokens = abi::abi_decode(&event_sig, &event_string, true).unwrap();
 
-        tokens.iter().for_each(|token| match token {
-            ethers::abi::Token::Address(a) => {
-                token_strings.push(format!("{a:#20x}"));
+            tokens.iter().for_each(|token| match token {
+                ethers::abi::Token::Address(a) => {
+                    token_strings.push(format!("{a:#20x}"));
+                }
+                ethers::abi::Token::Int(i) => {
+                    token_strings.push(format!("{i:}"));
+                }
+                ethers::abi::Token::Uint(u) => {
+                    token_strings.push(format!("{u:}"));
+                }
+                _ => {
+                    token_strings.push(format!("{token:}"));
+                }
+            });
+            if *is_block_number {
+                let block_number = &events[event_index].block_number.unwrap();
+                token_strings.push(format!("{block_number}"));
             }
-            ethers::abi::Token::Int(i) => {
-                token_strings.push(format!("{i:}"));
+            if *is_block_hash {
+                let block_hash = &events[event_index].block_hash.unwrap();
+                token_strings.push(format!("{block_hash:#x}"));
             }
-            ethers::abi::Token::Uint(u) => {
-                token_strings.push(format!("{u:}"));
+            if *is_tx_hash {
+                let tx_hash = &events[event_index].transaction_hash.unwrap();
+                token_strings.push(format!("{tx_hash:#x}"));
             }
-            _ => {
-                token_strings.push(format!("{token:}"));
-            }
-        });
-        if *is_block_number {
-            let block_number = &events[event_index].block_number.unwrap();
-            token_strings.push(format!("{block_number}"));
-        }
-        if *is_block_hash {
-            let block_hash = &events[event_index].block_hash.unwrap();
-            token_strings.push(format!("{block_hash:#x}"));
-        }
-        if *is_tx_hash {
-            let tx_hash = &events[event_index].transaction_hash.unwrap();
-            token_strings.push(format!("{tx_hash:#x}"));
-        }
-        let csv_event_field = token_strings.join(",");
+            let csv_event_field = token_strings.join(",");
             csv_event_field
-
         }));
     }
 
-    for handle in handles{
-        
+    for handle in handles {
         let csv_event_field = handle.await.unwrap();
         event_string_vector.push(format!("{csv_event_field:}"));
     }
@@ -101,9 +99,9 @@ pub async fn filter_events(
     let mut end_block = from_block + step;
     let mut end = false;
     let mut handles = Vec::new();
-    let mut log_handles =Vec::new();
+    let mut log_handles = Vec::new();
 
-    let events :Arc<Mutex<Vec<Log>>> = Arc::new(Mutex::new(Vec::new()));
+    let events: Arc<Mutex<Vec<Log>>> = Arc::new(Mutex::new(Vec::new()));
     while !end {
         if start_block > to_block {
             start_block = to_block;
@@ -115,7 +113,7 @@ pub async fn filter_events(
         let provider = Arc::clone(&provider);
         let target_address = Arc::clone(&target_address);
         let event_string = Arc::clone(&event_string);
-        
+
         handles.push(tokio::spawn(filter_event(
             provider,
             target_address,
@@ -191,19 +189,17 @@ pub async fn filter_event(
         .to_block(end_block);
     let handle = tokio::spawn(async move {
         match client.get_logs(&filter).await {
-            Ok(logs)=>{
-                Ok(logs)
-            }
-            Err(err)=>{
-                 log::info!(
-                     "log error block {} to {}, {:?}",
-                     start_block,
-                     end_block,
-                     err
-                 );
+            Ok(logs) => Ok(logs),
+            Err(err) => {
+                log::info!(
+                    "log error block {} to {}, {:?}",
+                    start_block,
+                    end_block,
+                    err
+                );
                 Err(EventError::ErrorBlockRange(start_block, end_block))
             }
         }
     });
-    handle.await.unwrap() 
+    handle.await.unwrap()
 }
